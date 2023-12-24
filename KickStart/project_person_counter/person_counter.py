@@ -6,7 +6,9 @@ from sort import *
 import numpy as np
 import time
 
-cap = cv2.VideoCapture("Videos/cars.mp4") #For video
+show_lines = False
+
+cap = cv2.VideoCapture("Videos/people.mp4") #For video
 
 model = YOLO('../Yolo_weights/yolov8m.pt')
 
@@ -22,14 +24,16 @@ classNames = ["person", "bicycle", "car", "motorbike", "aeroplane", "bus", "trai
               "teddy bear", "hair drier", "toothbrush"
               ]
 
-mask = cv2.imread("Project-car_counter/mask.png")
+mask = cv2.imread("project_person_counter/mask_up.png")
 
 #Tracking
 tracker = Sort(max_age=20, min_hits=3, iou_threshold=0.3)
 
-limits = [400,297,673,297]
+up_limit = [150,297,350,297]
+down_limit = [450,350,700,350]
 
-total_count = []
+up_count = []
+down_count = []
 
 # Variables for FPS calculation
 start_time = time.time()
@@ -39,9 +43,9 @@ while True:
     success, img = cap.read()
     imgRegion = cv2.bitwise_and(img, mask)
 
-    imgGraphics = cv2.imread("Project-car_counter/graphics.png",cv2.IMREAD_UNCHANGED)
-    img = cvzone.overlayPNG(img,imgGraphics,(0,0))
-
+    imgGraphics = cv2.imread("project_person_counter/graphics.png",cv2.IMREAD_UNCHANGED)
+    img = cvzone.overlayPNG(img,imgGraphics,(700,0))
+    
     results = model(imgRegion,stream=True)
 
     detections = np.empty((0,5))
@@ -52,6 +56,7 @@ while True:
         fps = frame_counter / (time.time() - start_time)
         frame_counter = 0
         start_time = time.time()
+
 
     for r in results:
         boxes = r.boxes
@@ -76,8 +81,7 @@ while True:
 
             CurrentClass = classNames[cls]
 
-            if (CurrentClass == "car" or CurrentClass == "bus" or CurrentClass == "motorbike" 
-                or CurrentClass == "truck") and conf > 0.3:
+            if (CurrentClass == "person") and conf > 0.3:
                 # cvzone.putTextRect(img, f"{CurrentClass} {conf}", ( max(0,int(x1)), max(40,int(y1)) ), 
                 #                    scale=0.6, thickness=1, offset = 3)
                 # cvzone.cornerRect(img, bbox,l=10,rt=5)
@@ -86,30 +90,43 @@ while True:
 
     resultsTracker = tracker.update(detections)
 
-    # cv2.line(img,(limits[0], limits[1]), (limits[2],limits[3]),(0,0,255),5)
+    if show_lines:
+
+        cv2.line(img,(up_limit[0], up_limit[1]), (up_limit[2],up_limit[3]),(0,0,255),5)
+        cv2.line(img,(down_limit[0], down_limit[1]), (down_limit[2],down_limit[3]),(0,0,255),5)
 
     for result in resultsTracker:
         x1, y1, x2, y2, id = result            
         print(result)
         bbox = int(x1), int(y1), int(x2-x1), int(y2-y1)
         cvzone.cornerRect(img, bbox, l=9, rt = 2, colorR=(255,0,255))
-        cvzone.putTextRect(img, f"{int(id)}", ( max(0,int(x1)), max(40,int(y1)) ), 
+        cvzone.putTextRect(img, f"person: {int(id)}", ( max(0,int(x1)), max(40,int(y1)) ), 
                                    scale=2, thickness=3, offset = 10)
         
         cx, cy = int(x1)+int(x2-x1)//2, int(y1)+int(y2-y1)//2
-        cv2.circle(img, (cx,cy),5,(255,0,255),cv2.FILLED)
+        # cv2.circle(img, (cx,cy),5,(255,0,255),cv2.FILLED)
 
-        if limits[0] < cx < limits[2] and limits[1] - 15 < cy < limits[1] + 15:
-            if total_count.count(id) == 0:
-                total_count.append(id)
-                # cv2.line(img,(limits[0], limits[1]), (limits[2],limits[3]),(0,255,0),5)
+        if up_limit[0] < cx < up_limit[2] and up_limit[1] - 15 < cy < up_limit[1] + 15:
+            if up_count.count(id) == 0:
+                up_count.append(id)
+                if show_lines:
+                    cv2.line(img,(up_limit[0], up_limit[1]), (up_limit[2],up_limit[3]),(0,255,0),5)
+
+        if down_limit[0] < cx < down_limit[2] and down_limit[1] - 15 < cy < down_limit[1] + 15:
+            if down_count.count(id) == 0:
+                down_count.append(id)
+                if show_lines:
+                    cv2.line(img,(down_limit[0], down_limit[1]), (down_limit[2],down_limit[3]),(0,255,0),5)
 
 
-    # cvzone.putTextRect(img, f"Count: {len(total_count)}", ( 50,50 ))
+    # cvzone.putTextRect(img, f"Count: {len(up_count)}", ( 50,50 ))
                 
-    cv2.putText(img, str(len(total_count)), (240,100), cv2.FONT_HERSHEY_PLAIN, 5, (50,50,255),8)
-        
+    cv2.putText(img, str(len(up_count)), (900,88), cv2.FONT_HERSHEY_PLAIN, 5, (74,195,139),8)
+    cv2.putText(img, str(len(down_count)), (1150,88), cv2.FONT_HERSHEY_PLAIN, 5, (50,50,255),8)
+
     cv2.putText(img, f"FPS: {int(fps)}", (1000, 680), cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 255, 255), 6)
+
+
         
 
     cv2.imshow("Image", img)
