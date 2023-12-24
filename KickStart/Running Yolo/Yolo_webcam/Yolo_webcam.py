@@ -7,9 +7,9 @@ import math
 # cap.set(3,1280)
 # cap.set(4,720)
 
-cap = cv2.VideoCapture("Videos/bikes.mp4") #For video
+cap = cv2.VideoCapture("Videos/motorbikes.mp4") #For video
 
-model = YOLO('../Yolo_weights/yolov8n.pt')
+model = YOLO('../Yolo_weights/yolov8l.pt')
 
 classNames = ["person", "bicycle", "car", "motorbike", "aeroplane", "bus", "train", "truck", "boat",
               "traffic light", "fire hydrant", "stop sign", "parking meter", "bench", "bird", "cat",
